@@ -178,9 +178,9 @@ describe Comment do
     end
     it "should not validate with no inverse captcha value and no email address provided" do
       @comment.author_email = nil
-      @comment.send("author_ick_#{@key}=", nil)
+      @comment.send("ick_#{@key}=", nil)
       @comment.send(:inverse_captcha_required?).should be_true
-      lambda{ @comment.save! }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Author ick #{@key} can't be blank")
+      lambda{ @comment.save! }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Ick #{@key} can't be blank")
     end
     it "should not save a comment if an email address is provided" do
       @comment.save
@@ -188,7 +188,7 @@ describe Comment do
     end
     it "should auto_approve the comment if the inverse captcha value is set and no email address is provided" do
       @comment.author_email = nil
-      @comment.send("author_ick_#{@key}=", "email@test.com")
+      @comment.send("ick_#{@key}=", "email@test.com")
       @comment.save
       @comment.approved_at.should_not be_nil
       @comment.approved_at.should be_instance_of(Time)

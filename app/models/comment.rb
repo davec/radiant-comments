@@ -145,7 +145,7 @@ class Comment < ActiveRecord::Base
       super
     rescue NoMethodError
       # Check for inverse captcha key
-      if method.to_s =~ /\Aauthor_ick_([^=]+)(=)?\z/
+      if method.to_s =~ /\Aick_([^=]+)(=)?\z/
         if $2
           self.author_captcha_key, self.author_captcha_value = $1, args[0]
         elsif $1 == author_captcha_key
@@ -168,7 +168,7 @@ class Comment < ActiveRecord::Base
     end
     
     def validate_inverse_captcha
-      self.errors.add("author_ick_#{author_captcha_key}", "can't be blank") if inverse_captcha_required? && author_captcha_value.blank?
+      self.errors.add("ick_#{author_captcha_key}", "can't be blank") if inverse_captcha_required? && author_captcha_value.blank?
     end
     
     def passes_logic_spam_filter?

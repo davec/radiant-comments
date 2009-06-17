@@ -353,20 +353,20 @@ module CommentTags
   desc %{
     Render form components for the inverse captcha feature.
   }
-  tag "inverse_captcha_tags" do |tag|
+  tag "comments:inverse_captcha_tags" do |tag|
     label = tag.attr['label'] || "Your Email Address"
     label_extra = tag.attr['label_extra'] || "(required, but not displayed)"
     inverse_captcha_key = (tag.locals.page.request.session[:inverse_captcha_key] ||= Comment.inverse_captcha_key)
 
     returning String.new do |str|
-      str << %Q{<p><label for="comment_author_ick_#{inverse_captcha_key}">#{label}</label> #{label_extra}<br />\n}
+      str << %Q{<p><label for="comment_ick_#{inverse_captcha_key}">#{label}</label> #{label_extra}<br />\n}
       if comment = tag.locals.page.last_comment
-        if error = comment.errors.on("author_ick_#{inverse_captcha_key}")
+        if error = comment.errors.on("ick_#{inverse_captcha_key}")
           str << %Q{<p style="color:red">Email #{error}</p>\n}
         end
       end
-      str << %Q{<input type="text" id="comment_author_ick_#{inverse_captcha_key}" name="comment[author_ick_#{inverse_captcha_key}]" class="required"}
-      if value = (tag.locals.page.last_comment ? tag.locals.page.last_comment.send("author_ick_#{inverse_captcha_key}") : nil)
+      str << %Q{<input type="text" id="comment_ick_#{inverse_captcha_key}" name="comment[ick_#{inverse_captcha_key}]" class="required"}
+      if value = (tag.locals.page.last_comment ? tag.locals.page.last_comment.send("ick_#{inverse_captcha_key}") : nil)
         str << %Q{ value="#{value}"}
       end
       str << %{ />\n}
