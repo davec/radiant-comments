@@ -5,14 +5,17 @@ class Comment < ActiveRecord::Base
   belongs_to :page, :counter_cache => true
   
   validate :validate_spam_answer
-  validates_presence_of :author, :author_email, :content
+  validate :validate_inverse_captcha
+  validates_presence_of :author, :content
+  validates_presence_of :author_email, :unless => lambda { Comment.inverse_captcha_enabled? }
+  validates_presence_of :inverse_captcha_key, :if => lambda { Comment.inverse_captcha_enabled? }
   
   before_save :auto_approve
   before_save :apply_filter
   after_save  :save_mollom_servers
     
-  attr_accessor :valid_spam_answer, :spam_answer
-  attr_accessible :author, :author_email, :author_url, :filter_id, :content, :valid_spam_answer, :spam_answer
+  attr_accessor :valid_spam_answer, :spam_answer, :inverse_captcha_key, :author_captcha_key, :author_captcha_value
+  attr_accessible :author, :author_email, :author_url, :filter_id, :content, :valid_spam_answer, :spam_answer, :inverse_captcha_key
   
   def self.per_page
     count = Radiant::Config['comments.per_page'].to_i.abs
@@ -21,6 +24,19 @@ class Comment < ActiveRecord::Base
   
   def self.simple_spam_filter_enabled?
     Radiant::Config['comments.simple_spam_filter_required?']
+  end
+  
+  def self.inverse_captcha_enabled?
+    Radiant::Config['comments.inverse_captcha_required?']
+  end
+  
+  # Generate a random string between 5 and 8 characters in length for the inverse captcha key
+  def self.inverse_captcha_key
+    ('a'..'z').to_a.sort_by{rand}[0,5+rand(4)].join
+  end
+  
+  def self.hash_value(string)
+    Digest::MD5.hexdigest(string.to_s)
   end
   
   def request=(request)
@@ -51,7 +67,9 @@ class Comment < ActiveRecord::Base
   # comment, this method will return true
   def auto_approve?
     return false if Radiant::Config['comments.auto_approve'] != "true"
-    if simple_spam_filter_required?
+    if inverse_captcha_required?
+      passes_inverse_captcha?
+    elsif simple_spam_filter_required?
       passes_logic_spam_filter?
     elsif akismet.valid?
       # We do the negation because true means spam, false means ham
@@ -122,6 +140,25 @@ class Comment < ActiveRecord::Base
     end
   end
   
+  def method_missing(method, *args)
+    begin
+      super
+    rescue NoMethodError
+      # Check for inverse captcha key
+      if method.to_s =~ /\Aauthor_ick_([^=]+)(=)?\z/
+        if $2
+          self.author_captcha_key, self.author_captcha_value = $1, args[0]
+        elsif $1 == author_captcha_key
+          author_captcha_value
+        else
+          raise $!
+        end
+      else
+        raise $!
+      end
+    end
+  end
+  
   private
   
     def validate_spam_answer
@@ -130,18 +167,34 @@ class Comment < ActiveRecord::Base
       end
     end
     
+    def validate_inverse_captcha
+      self.errors.add("author_ick_#{author_captcha_key}", "can't be blank") if inverse_captcha_required? && author_captcha_value.blank?
+    end
+    
     def passes_logic_spam_filter?
       valid_spam_answer == hashed_spam_answer
+    end
+    
+    def passes_inverse_captcha?
+      inverse_captcha_key == hashed_author_captcha_key && !author_captcha_value.blank? && author_email.blank?
     end
     
     def simple_spam_filter_required?
       !valid_spam_answer.blank? && Comment.simple_spam_filter_enabled?
     end
     
-    def hashed_spam_answer
-      Digest::MD5.hexdigest(spam_answer.to_s.to_slug)
+    def inverse_captcha_required?
+      !inverse_captcha_key.blank? && Comment.inverse_captcha_enabled?
     end
-
+    
+    def hashed_spam_answer
+      Comment.hash_value(spam_answer.to_s.to_slug)
+    end
+    
+    def hashed_author_captcha_key
+      Comment.hash_value(author_captcha_key)
+    end
+    
     def auto_approve
       self.approved_at = Time.now if auto_approve?
     end

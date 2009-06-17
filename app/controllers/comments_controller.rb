@@ -13,8 +13,20 @@ class CommentsController < ApplicationController
   
   def create
     comment = @page.comments.build(params[:comment])
-    comment.request = request
     comment.request = @page.request = request
+    if Comment.inverse_captcha_enabled?
+      # The inverse captcha key attribute (looks something like author_ick_niwom)
+      # cannot be set via mass assignment (there's no way to know what the key
+      # name is ahead of time to specify via attr_accessible in the Comment model)
+      # so it needs to be plucked out of the posted comment params and set directly.
+      (params[:comment].keys - Comment.accessible_attributes.to_a).each do |attr|
+        if attr =~ /\Aauthor_ick_(.*)\z/
+          if Comment.hash_value($1) == params[:comment][:inverse_captcha_key]
+            comment.send "#{attr}=", params[:comment][attr]
+          end
+        end
+      end
+    end
     comment.save!
     
     clear_single_page_cache(comment)

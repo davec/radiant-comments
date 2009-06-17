@@ -169,6 +169,32 @@ describe Comment do
     end
   end
 
+  describe "using inverse captcha" do
+    before do
+      Radiant::Config['comments.inverse_captcha_required?'] = true
+      @comment = create_comment
+      @key = "xyzzy"
+      @comment.inverse_captcha_key = Digest::MD5.hexdigest(@key)
+    end
+    it "should not validate with no inverse captcha value and no email address provided" do
+      @comment.author_email = nil
+      @comment.send("author_ick_#{@key}=", nil)
+      @comment.send(:inverse_captcha_required?).should be_true
+      lambda{ @comment.save! }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Author ick #{@key} can't be blank")
+    end
+    it "should not save a comment if an email address is provided" do
+      @comment.save
+      @comment.approved_at.should be_nil
+    end
+    it "should auto_approve the comment if the inverse captcha value is set and no email address is provided" do
+      @comment.author_email = nil
+      @comment.send("author_ick_#{@key}=", "email@test.com")
+      @comment.save
+      @comment.approved_at.should_not be_nil
+      @comment.approved_at.should be_instance_of(Time)
+    end
+  end
+
   def create_comment(opts={})
     Comment.new({ :page => @page, :author => "Test", :author_email => "test@test.com", :author_ip => "10.1.10.1",
                   :content => "Test..." }.merge(opts))

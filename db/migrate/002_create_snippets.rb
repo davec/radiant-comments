@@ -1,7 +1,7 @@
 class CreateSnippets < ActiveRecord::Migration
   def self.up
     
-    # This code _WILL_ override snippets with the name comments, comment and comment_form
+    # This code _WILL_ override snippets with the name comments, comment, comment_spam_block, and comment_form
     # if they exists.
     
     # Comments snippet
@@ -79,9 +79,14 @@ CONTENT
       <r:error on="author"><p style="color:red">Name <r:message /></p></r:error>
       <r:text_field_tag name="author" id="author" class="required" /></p>
 
-      <p><label for="comment_author_email">Your Email Address</label> (required, but not displayed)<br />
-      <r:error on="author_email"><p style="color:red">Email <r:message /></p></r:error>
-      <r:text_field_tag name="author_email" class="required" /></p>
+      <r:if_comments_use_inverse_captcha>
+        <r:inverse_captcha_tags label="Your Email Address" label_extra="(required, but not displayed)" />
+      </r:if_comments_use_inverse_captcha>
+      <r:unless_comments_use_inverse_captcha>
+        <p><label for="comment_author_email">Your Email Address</label> (required, but not displayed)<br />
+        <r:error on="author_email"><p style="color:red">Email <r:message /></p></r:error>
+        <r:text_field_tag name="author_email" class="required" /></p>
+      </r:unless_comments_use_inverse_captcha>
 
       <p><label for="comment_author_url">Your Web Address</label> (optional)<br />
       <r:error on="author_url"><p style="color:red">Web Address <r:message /></p></r:error>

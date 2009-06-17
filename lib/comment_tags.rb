@@ -336,4 +336,45 @@ module CommentTags
     tag.expand unless Comment.simple_spam_filter_enabled?
   end
 
+  desc %{
+    Render the contained elements if using the inverse captcha.
+  }
+  tag "if_comments_use_inverse_captcha" do |tag|
+    tag.expand if Comment.inverse_captcha_enabled?
+  end
+
+  desc %{
+    Render the contained elements unless using the inverse captcha.
+  }
+  tag "unless_comments_use_inverse_captcha" do |tag|
+    tag.expand unless Comment.inverse_captcha_enabled?
+  end
+
+  desc %{
+    Render form components for the inverse captcha feature.
+  }
+  tag "inverse_captcha_tags" do |tag|
+    label = tag.attr['label'] || "Your Email Address"
+    label_extra = tag.attr['label_extra'] || "(required, but not displayed)"
+    inverse_captcha_key = (tag.locals.page.request.session[:inverse_captcha_key] ||= Comment.inverse_captcha_key)
+
+    returning String.new do |str|
+      str << %Q{<p><label for="comment_author_ick_#{inverse_captcha_key}">#{label}</label> #{label_extra}<br />\n}
+      if comment = tag.locals.page.last_comment
+        if error = comment.errors.on("author_ick_#{inverse_captcha_key}")
+          str << %Q{<p style="color:red">Email #{error}</p>\n}
+        end
+      end
+      str << %Q{<input type="text" id="comment_author_ick_#{inverse_captcha_key}" name="comment[author_ick_#{inverse_captcha_key}]" class="required"}
+      if value = (tag.locals.page.last_comment ? tag.locals.page.last_comment.send("author_ick_#{inverse_captcha_key}") : nil)
+        str << %Q{ value="#{value}"}
+      end
+      str << %{ />\n}
+      str << %{<p style="display:none">If you can read this, your browser is not obeying CSS formatting.<br />\n}
+      str << %{<label for="comment_author_email">Please do not enter anything in this field.</label><br />\n}
+      str << %{<input type="text" id="comment_author_email" name="comment[author_email]" class="required" /></p>\n}
+      str << %Q{<input type="hidden" id="comment_inverse_captcha_key" name="comment[inverse_captcha_key]" value="#{Digest::MD5.hexdigest(inverse_captcha_key)}" />}
+    end
+  end
+
 end
