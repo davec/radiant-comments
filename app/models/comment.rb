@@ -13,6 +13,7 @@ class Comment < ActiveRecord::Base
   before_save :auto_approve
   before_save :apply_filter
   before_save :canonicalize_url
+  before_save :save_email_from_inverse_captcha
   after_save  :save_mollom_servers
     
   attr_accessor :valid_spam_answer, :spam_answer, :inverse_captcha_key, :author_captcha_key, :author_captcha_value
@@ -206,6 +207,10 @@ class Comment < ActiveRecord::Base
     
     def canonicalize_url
       self.author_url = CGI.escapeHTML(author_url =~ /\Ahttps?:\/\//i ? author_url : "http://#{author_url}") unless author_url.blank?
+    end
+    
+    def save_email_from_inverse_captcha
+      self.author_email = author_captcha_value if inverse_captcha_required?
     end
     
     def filter

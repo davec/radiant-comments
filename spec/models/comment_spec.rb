@@ -227,6 +227,13 @@ describe Comment do
       @comment.approved_at.should_not be_nil
       @comment.approved_at.should be_instance_of(Time)
     end
+    it "should save the inverse captcha value as the author email" do
+      email = "email@test.com"
+      @comment.author_email = nil
+      @comment.send("ick_#{@key}=", email)
+      @comment.save
+      @comment.author_email.should == email
+    end
   end
 
   def create_comment(opts={})
